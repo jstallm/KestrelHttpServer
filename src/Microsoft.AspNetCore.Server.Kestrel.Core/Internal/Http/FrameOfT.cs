@@ -40,6 +40,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                     InitializeHeaders();
 
+                    bool shouldFlush = false;
+
                     while (!_requestProcessingStopping)
                     {
                         var awaitable = Input.ReadAsync();
@@ -51,7 +53,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         }
                         else
                         {
-                            await Output.FlushAsync();
+                            if (shouldFlush)
+                            {
+                                await Output.FlushAsync();
+                            }
                             result = await awaitable;
                         }
 
@@ -78,6 +83,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         if (_requestProcessingStatus == RequestProcessingStatus.AppStarted)
                         {
+                            shouldFlush = consumed == result.Buffer.End;
                             break;
                         }
 
