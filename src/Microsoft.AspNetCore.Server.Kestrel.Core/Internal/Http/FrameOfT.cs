@@ -56,6 +56,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                             if (shouldFlush)
                             {
                                 await Output.FlushAsync();
+                                shouldFlush = false;
                             }
                             result = await awaitable;
                         }
@@ -83,7 +84,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                         if (_requestProcessingStatus == RequestProcessingStatus.AppStarted)
                         {
-                            shouldFlush = consumed == result.Buffer.End;
+                            shouldFlush = true;
                             break;
                         }
 
