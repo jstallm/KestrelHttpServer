@@ -34,13 +34,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             try
             {
+                bool shouldFlush = false;
+
                 while (!_requestProcessingStopping)
                 {
                     TimeoutControl.SetTimeout(_keepAliveMilliseconds, TimeoutAction.CloseConnection);
 
                     InitializeHeaders();
-
-                    bool shouldFlush = false;
 
                     while (!_requestProcessingStopping)
                     {
