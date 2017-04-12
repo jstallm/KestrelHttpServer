@@ -78,8 +78,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
                 writableBuffer.Commit();
             }
-
-            return FlushAsync(writableBuffer);
+            return Task.CompletedTask;
         }
 
         private Task FlushAsync(WritableBuffer writableBuffer)
@@ -143,9 +142,15 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             WriteAsync(_emptyData, default(CancellationToken)).GetAwaiter().GetResult();
         }
 
-        Task ISocketOutput.FlushAsync(CancellationToken cancellationToken)
+        async Task ISocketOutput.FlushAsync(CancellationToken cancellationToken)
         {
-            return WriteAsync(_emptyData, cancellationToken);
+            WritableBuffer writableBuffer;
+            lock (_flushLock)
+            {
+                writableBuffer = _pipe.Alloc();
+            }
+
+            await FlushAsync(writableBuffer);
         }
 
         void ISocketOutput.Write<T>(Action<WritableBuffer, T> callback, T state)
