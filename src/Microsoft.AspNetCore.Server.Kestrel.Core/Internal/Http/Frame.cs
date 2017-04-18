@@ -326,6 +326,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _frameStreams.Start(messageBody);
         }
 
+        public void PauseStreams() => _frameStreams.Pause();
+
+        public void ResumeStreams() => _frameStreams.Resume();
+
+        public void StopStreams() => _frameStreams.Stop();
+
         public void Reset()
         {
             FrameRequestHeaders?.Reset();
@@ -760,12 +766,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             return TaskCache.CompletedTask;
         }
-
-        public void PauseStreams() => _frameStreams.Pause();
-
-        public void ResumeStreams() => _frameStreams.Resume();
-
-        public void StopStreams() => _frameStreams.Stop();
 
         private async Task InitializeResponseAwaited(int firstWriteByteCount)
         {
