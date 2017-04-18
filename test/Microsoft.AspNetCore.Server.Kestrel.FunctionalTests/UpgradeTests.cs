@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Testing;
 using Microsoft.Extensions.Internal;
 using Xunit;
@@ -22,11 +23,11 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                 var feature = context.Features.Get<IHttpUpgradeFeature>();
                 var stream = await feature.UpgradeAsync();
 
-                Assert.Throws<InvalidOperationException>(() => context.Response.Body.WriteByte((byte)' '));
+                var ex = Assert.Throws<InvalidOperationException>(() => context.Response.Body.WriteByte((byte)' '));
+                Assert.Equal(CoreStrings.ResponseStreamWasUpgraded, ex.Message);
 
                 using (var writer = new StreamWriter(stream))
                 {
-                    writer.WriteLine("");
                     writer.WriteLine("New protocol data");
                 }
 
@@ -40,8 +41,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "Connection: Upgrade",
                         "",
                         "");
-                    await connection.Receive("HTTP/1.1 101 ");
-                    await connection.ReceiveUntil("New protocol data");
+                    await connection.Receive("HTTP/1.1 101 Switching Protocols",
+                        "Connection: Upgrade",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "",
+                        "");
+
+                    await connection.Receive("New protocol data");
                     await upgrade.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
@@ -89,18 +95,23 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "Connection: Upgrade",
                         "",
                         "");
-                    await connection.Receive("HTTP/1.1 101 ");
 
-                    var sendTask = connection.Send(send + "\r\n");
-                    var recvTask = connection.ReceiveUntil(recv);
+                    await connection.Receive("HTTP/1.1 101 Switching Protocols",
+                        "Connection: Upgrade",
+                        $"Date: {server.Context.DateHeaderValue}",
+                        "",
+                        "");
 
-                    await Task.WhenAll(sendTask, recvTask, upgrade.Task).TimeoutAfter(TimeSpan.FromSeconds(30));
+                    await connection.Send(send + "\r\n");
+                    await connection.Receive(recv);
+
+                    await upgrade.Task.TimeoutAfter(TimeSpan.FromSeconds(30));
                 }
             }
         }
 
         [Fact]
-        public async Task RequestWithContentLengthAndUpgradeThrows()
+        public async Task RejectsRequestWithContentLengthAndUpgrade()
         {
             using (var server = new TestServer(context => TaskCache.CompletedTask))
             {
@@ -124,7 +135,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.FunctionalTests
                         "",
                         "1");
 
-                    await connection.Receive("HTTP/1.1 400 ");
+                    await connection.Receive("HTTP/1.1 400 Bad Request");
+                }
+            }
+        }
+
+        [Fact]
+        public async Task RejectsRequestWithChunckedEncodingAndUpgrade()
+        {
+            using (var server = new TestServer(context => TaskCache.CompletedTask))
+            {
+                using (var connection = server.CreateConnection())
+                {
+                    await connection.Send("POST / HTTP/1.1",
+                        "Host:",
+                        "Transfer-Encoding: chunked",
+                        "Connection: Upgrade",
+                        "",
+                        "");
+                    await connection.Receive("HTTP/1.1 400 Bad Request");
                 }
             }
         }

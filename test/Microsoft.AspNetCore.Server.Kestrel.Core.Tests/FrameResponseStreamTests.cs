@@ -94,5 +94,36 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             Assert.Throws<NotSupportedException>(() => stream.Position);
             Assert.Throws<NotSupportedException>(() => stream.Position = 0);
         }
+
+        [Fact]
+        public void WriteThrowsAfterUpgrade()
+        {
+            var stream = new FrameResponseStream(new MockFrameControl());
+            stream.Upgrade();
+            var ex = Assert.Throws<InvalidOperationException>(() => stream.Write(new byte[1], 0, 1));
+            Assert.Equal(CoreStrings.ResponseStreamWasUpgraded, ex.Message);
+        }
+
+        [Fact]
+        public void UpgradeStateSticks()
+        {
+            var stream = new FrameResponseStream(new MockFrameControl());
+            stream.Upgrade();
+
+            stream.PauseAcceptingWrites();
+            Assert.True(stream.Upgraded);
+
+            stream.ResumeAcceptingWrites();
+            Assert.True(stream.Upgraded);
+
+            stream.StartAcceptingWrites();
+            Assert.True(stream.Upgraded);
+
+            stream.StopAcceptingWrites();
+            Assert.True(stream.Upgraded);
+
+            stream.Abort();
+            Assert.True(stream.Upgraded);
+        }
     }
 }

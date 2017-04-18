@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http;
 using Moq;
@@ -185,6 +186,59 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Tests
             var stream = new FrameRequestStream();
             stream.StartAcceptingReads(null);
             Assert.Throws<ArgumentException>(() => { stream.CopyToAsync(Mock.Of<Stream>(), 0); });
+        }
+
+        [Fact]
+        public void ReadNoopsAfterUpgrade()
+        {
+            var stream = new FrameRequestStream();
+
+            var mockBody = new Mock<MessageBody>(null);
+            mockBody.Setup(b => b.ReadAsync(It.IsAny<ArraySegment<byte>>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(1));
+
+            stream.StartAcceptingReads(mockBody.Object);
+            var count = stream.Read(new byte[1], 0, 1);
+            Assert.Equal(1, count);
+            stream.Upgrade();
+
+            count = stream.Read(new byte[1], 0, 1);
+            Assert.Equal(0, count);
+        }
+
+        [Fact]
+        public void DoesNotUpgradeAborted()
+        {
+            var stream = new FrameRequestStream();
+
+            stream.StartAcceptingReads(null);
+            stream.Abort();
+            stream.Upgrade();
+
+            Assert.False(stream.Upgraded);
+        }
+
+        [Fact]
+        public void UpgradeStateSticks()
+        {
+            var stream = new FrameRequestStream();
+            Assert.NotNull(stream.Upgrade());
+
+            stream.PauseAcceptingReads();
+            Assert.True(stream.Upgraded);
+
+            stream.ResumeAcceptingReads();
+            Assert.True(stream.Upgraded);
+
+            stream.StartAcceptingReads(null);
+            Assert.True(stream.Upgraded);
+
+            stream.StopAcceptingReads();
+            Assert.True(stream.Upgraded);
+
+            // the exception: this should mark the stream as failed
+            stream.Abort();
+            Assert.False(stream.Upgraded);
         }
     }
 }

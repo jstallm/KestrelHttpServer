@@ -33,4 +33,10 @@
     <PackageReference Include="System.Threading.ThreadPool" Version="$(CoreFxVersion)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="CoreStrings.resx">
+      <Generator></Generator>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

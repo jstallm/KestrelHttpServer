@@ -90,7 +90,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     ex = new BadHttpRequestException("Invalid Host header.", StatusCodes.Status400BadRequest);
                     break;
                 case RequestRejectionReason.UpgradeRequestCannotHavePayload:
-                    ex = new BadHttpRequestException("Requests with 'Connection: Upgrade' cannot have content in the request body", StatusCodes.Status400BadRequest);
+                    ex = new BadHttpRequestException("Requests with 'Connection: Upgrade' cannot have content in the request body.", StatusCodes.Status400BadRequest);
                     break;
                 default:
                     ex = new BadHttpRequestException("Bad request.", StatusCodes.Status400BadRequest);

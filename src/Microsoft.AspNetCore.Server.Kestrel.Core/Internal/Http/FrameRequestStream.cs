@@ -28,30 +28,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _error = copy._error;
         }
 
+        public bool Upgraded => _state == FrameStreamState.Upgraded;
+
         public override bool CanRead => true;
 
         public override bool CanSeek => false;
 
         public override bool CanWrite => false;
 
-        public override long Length
-        {
-            get
-            {
-                throw new NotSupportedException();
-            }
-        }
+        public override long Length => throw new NotSupportedException();
 
         public override long Position
         {
-            get
-            {
-                throw new NotSupportedException();
-            }
-            set
-            {
-                throw new NotSupportedException();
-            }
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
         }
 
         public override void Flush()
@@ -170,7 +160,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void PauseAcceptingReads()
         {
-            _state = FrameStreamState.Closed;
+            if (_state != FrameStreamState.Upgraded)
+            {
+                _state = FrameStreamState.Closed;
+            }
         }
 
         public void ResumeAcceptingReads()
@@ -183,9 +176,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void StopAcceptingReads()
         {
-            // Can't use dispose (or close) as can be disposed too early by user code
-            // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
-            _state = FrameStreamState.Closed;
+            if (_state != FrameStreamState.Upgraded)
+            {
+                // Can't use dispose (or close) as can be disposed too early by user code
+                // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
+                _state = FrameStreamState.Closed;
+            }
+
             _body = null;
         }
 
@@ -204,7 +201,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public FrameRequestStream Upgrade()
         {
             var upgraded = new FrameRequestStream(this);
-            _state = FrameStreamState.Upgraded;
+            if (_state != FrameStreamState.Aborted)
+            {
+                _state = FrameStreamState.Upgraded;
+            }
             return upgraded;
         }
 

@@ -25,30 +25,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _state = copy._state;
         }
 
+        public bool Upgraded => _state == FrameStreamState.Upgraded;
+
         public override bool CanRead => false;
 
         public override bool CanSeek => false;
 
         public override bool CanWrite => true;
 
-        public override long Length
-        {
-            get
-            {
-                throw new NotSupportedException();
-            }
-        }
+        public override long Length => throw new NotSupportedException();
 
         public override long Position
         {
-            get
-            {
-                throw new NotSupportedException();
-            }
-            set
-            {
-                throw new NotSupportedException();
-            }
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
         }
 
         public override void Flush()
@@ -145,7 +135,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void StartAcceptingWrites()
         {
-            // Only start if not aborted
+            // Only start if not aborted or upgraded
             if (_state == FrameStreamState.Closed)
             {
                 _state = FrameStreamState.Open;
@@ -154,7 +144,10 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void PauseAcceptingWrites()
         {
-            _state = FrameStreamState.Closed;
+            if (_state != FrameStreamState.Upgraded)
+            {
+                _state = FrameStreamState.Closed;
+            }
         }
 
         public void ResumeAcceptingWrites()
@@ -167,15 +160,18 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
         public void StopAcceptingWrites()
         {
-            // Can't use dispose (or close) as can be disposed too early by user code
-            // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
-            _state = FrameStreamState.Closed;
+            if (_state != FrameStreamState.Upgraded)
+            {
+                // Can't use dispose (or close) as can be disposed too early by user code
+                // As exampled in EngineTests.ZeroContentLengthNotSetAutomaticallyForCertainStatusCodes
+                _state = FrameStreamState.Closed;
+            }
         }
 
         public void Abort()
         {
             // We don't want to throw an ODE until the app func actually completes.
-            if (_state != FrameStreamState.Closed)
+            if (_state != FrameStreamState.Closed && _state != FrameStreamState.Upgraded)
             {
                 _state = FrameStreamState.Aborted;
             }
@@ -192,6 +188,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         {
             switch (_state)
             {
+                case FrameStreamState.Upgraded:
+                    throw new InvalidOperationException(CoreStrings.ResponseStreamWasUpgraded);
                 case FrameStreamState.Open:
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -207,8 +205,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         return Task.FromCanceled(cancellationToken);
                     }
                     break;
-                case FrameStreamState.Upgraded:
-                    throw new InvalidOperationException("Cannot write to response body after connection has been upgraded.");
             }
             return null;
         }

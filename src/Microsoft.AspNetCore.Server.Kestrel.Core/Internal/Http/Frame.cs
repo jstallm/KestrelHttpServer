@@ -323,27 +323,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             RequestBody = _frameStreams.RequestBody;
             ResponseBody = _frameStreams.ResponseBody;
-
-            _frameStreams.RequestBody.StartAcceptingReads(messageBody);
-            _frameStreams.ResponseBody.StartAcceptingWrites();
-        }
-
-        public void PauseStreams()
-        {
-            _frameStreams.RequestBody.PauseAcceptingReads();
-            _frameStreams.ResponseBody.PauseAcceptingWrites();
-        }
-
-        public void ResumeStreams()
-        {
-            _frameStreams.RequestBody.ResumeAcceptingReads();
-            _frameStreams.ResponseBody.ResumeAcceptingWrites();
-        }
-
-        public void StopStreams()
-        {
-            _frameStreams.RequestBody.StopAcceptingReads();
-            _frameStreams.ResponseBody.StopAcceptingWrites();
+            _frameStreams.Start(messageBody);
         }
 
         public void Reset()
@@ -451,8 +431,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             {
                 _requestProcessingStopping = true;
 
-                _frameStreams?.RequestBody.Abort(error);
-                _frameStreams?.ResponseBody.Abort();
+                _frameStreams?.Abort(error);
 
                 LifetimeControl.End(ProduceEndType.SocketDisconnect);
 
@@ -781,6 +760,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             return TaskCache.CompletedTask;
         }
+
+        public void PauseStreams() => _frameStreams.Pause();
+
+        public void ResumeStreams() => _frameStreams.Resume();
+
+        public void StopStreams() => _frameStreams.Stop();
 
         private async Task InitializeResponseAwaited(int firstWriteByteCount)
         {
