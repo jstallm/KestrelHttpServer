@@ -11,11 +11,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Infrastructure
         {
             RequestBody = new FrameRequestStream();
             ResponseBody = new FrameResponseStream(frameControl);
-            DuplexStream = new FrameDuplexStream(RequestBody, ResponseBody);
         }
 
         public FrameRequestStream RequestBody { get; }
         public FrameResponseStream ResponseBody { get; }
-        public FrameDuplexStream DuplexStream { get; }
+
+        public FrameDuplexStream Upgrade()
+            => new FrameDuplexStream(RequestBody.Upgrade(), ResponseBody.Upgrade());
     }
 }

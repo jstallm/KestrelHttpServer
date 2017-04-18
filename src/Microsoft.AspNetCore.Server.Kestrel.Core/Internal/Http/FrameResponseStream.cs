@@ -19,6 +19,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             _state = FrameStreamState.Closed;
         }
 
+        private FrameResponseStream(FrameResponseStream copy)
+        {
+            _frameControl = copy._frameControl;
+            _state = copy._state;
+        }
+
         public override bool CanRead => false;
 
         public override bool CanSeek => false;
@@ -175,6 +181,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
+        public FrameResponseStream Upgrade()
+        {
+            var upgraded = new FrameResponseStream(this);
+            _state = FrameStreamState.Upgraded;
+            return upgraded;
+        }
+
         private Task ValidateState(CancellationToken cancellationToken)
         {
             switch (_state)
@@ -194,6 +207,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                         return Task.FromCanceled(cancellationToken);
                     }
                     break;
+                case FrameStreamState.Upgraded:
+                    throw new InvalidOperationException("Cannot write to response body after connection has been upgraded.");
             }
             return null;
         }

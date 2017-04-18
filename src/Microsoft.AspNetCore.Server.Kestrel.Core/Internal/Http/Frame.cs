@@ -241,8 +241,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public IHeaderDictionary ResponseHeaders { get; set; }
         public Stream ResponseBody { get; set; }
 
-        public Stream DuplexStream { get; set; }
-
         public CancellationToken RequestAborted
         {
             get
@@ -325,7 +323,6 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 
             RequestBody = _frameStreams.RequestBody;
             ResponseBody = _frameStreams.ResponseBody;
-            DuplexStream = _frameStreams.DuplexStream;
 
             _frameStreams.RequestBody.StartAcceptingReads(messageBody);
             _frameStreams.ResponseBody.StartAcceptingWrites();

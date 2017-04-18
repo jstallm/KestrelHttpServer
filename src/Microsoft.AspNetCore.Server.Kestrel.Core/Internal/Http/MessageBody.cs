@@ -237,15 +237,12 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             var keepAlive = httpVersion != HttpVersion.Http10;
 
             var connection = headers.HeaderConnection;
+            var upgrade = false;
             if (connection.Count > 0)
             {
                 var connectionOptions = FrameHeaders.ParseConnection(connection);
 
-                if ((connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade)
-                {
-                    return new ForRemainingData(true, context);
-                }
-
+                upgrade = (connectionOptions & ConnectionOptions.Upgrade) == ConnectionOptions.Upgrade;
                 keepAlive = (connectionOptions & ConnectionOptions.KeepAlive) == ConnectionOptions.KeepAlive;
             }
 
@@ -265,15 +262,25 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     context.RejectRequest(RequestRejectionReason.FinalTransferCodingNotChunked, transferEncoding.ToString());
                 }
 
+                if (upgrade)
+                {
+                    context.RejectRequest(RequestRejectionReason.UpgradeRequestCannotHavePayload);
+                }
+
                 return new ForChunkedEncoding(keepAlive, headers, context);
             }
 
             if (headers.ContentLength.HasValue)
             {
                 var contentLength = headers.ContentLength.Value;
+
                 if (contentLength == 0)
                 {
                     return keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
+                }
+                else if (upgrade)
+                {
+                    context.RejectRequest(RequestRejectionReason.UpgradeRequestCannotHavePayload);
                 }
 
                 return new ForContentLength(keepAlive, contentLength, context);
@@ -291,15 +298,20 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                 }
             }
 
+            if (upgrade)
+            {
+                return new ForUpgrade(context);
+            }
+
             return keepAlive ? _zeroContentLengthKeepAlive : _zeroContentLengthClose;
         }
 
-        private class ForRemainingData : MessageBody
+        private class ForUpgrade : MessageBody
         {
-            public ForRemainingData(bool upgrade, Frame context)
+            public ForUpgrade(Frame context)
                 : base(context)
             {
-                RequestUpgrade = upgrade;
+                RequestUpgrade = true;
             }
 
             protected override ValueTask<ArraySegment<byte>> PeekAsync(CancellationToken cancellationToken)

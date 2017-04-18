@@ -11,6 +11,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 {
     class FrameRequestStream : Stream
     {
+        private static readonly Task<int> _nullRead = Task.FromResult(0);
         private MessageBody _body;
         private FrameStreamState _state;
         private Exception _error;
@@ -18,6 +19,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
         public FrameRequestStream()
         {
             _state = FrameStreamState.Closed;
+        }
+
+        private FrameRequestStream(FrameRequestStream copy)
+        {
+            _body = copy._body;
+            _state = copy._state;
+            _error = copy._error;
         }
 
         public override bool CanRead => true;
@@ -193,6 +201,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
             }
         }
 
+        public FrameRequestStream Upgrade()
+        {
+            var upgraded = new FrameRequestStream(this);
+            _state = FrameStreamState.Upgraded;
+            return upgraded;
+        }
+
         private Task<int> ValidateState(CancellationToken cancellationToken)
         {
             switch (_state)
@@ -209,6 +224,8 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
                     return _error != null ?
                         Task.FromException<int>(_error) :
                         Task.FromCanceled<int>(new CancellationToken(true));
+                case FrameStreamState.Upgraded:
+                    return _nullRead;
             }
             return null;
         }

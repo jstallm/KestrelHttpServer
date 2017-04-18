@@ -7,6 +7,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
     {
         Open,
         Closed,
-        Aborted
+        Aborted,
+        Upgraded
     }
 }

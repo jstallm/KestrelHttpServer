@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -9,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.AspNetCore.Testing
 {
@@ -123,6 +125,26 @@ namespace Microsoft.AspNetCore.Testing
                 // The server is forcefully closing the connection so an IOException:
                 // "Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host."
                 // isn't guaranteed but not unexpected.
+            }
+        }
+
+        public Task ReceiveUntil(string line, StringComparison comparer = StringComparison.OrdinalIgnoreCase)
+            => ReceiveUntil(next => next.Equals(line, comparer));
+
+        public async Task ReceiveUntil(Predicate<string> predicate)
+        {
+            for(;;)
+            {
+                var next = await _reader.ReadLineAsync().TimeoutAfter(Timeout).ConfigureAwait(false);
+                if (next == null)
+                {
+                    throw new XunitException("Reached end of stream without finding text that matched the condition");
+                }
+
+                if (predicate(next))
+                {
+                    return;
+                }
             }
         }
 
