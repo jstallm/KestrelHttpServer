@@ -131,7 +131,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             try
             {
-                await BindEndpointAsync(new IPEndPoint(IPAddress.Loopback, address.Port), context);
+                await BindEndpointAsync(new IPEndPoint(IPAddress.Loopback, address.Port), context).ConfigureAwait(false);
             }
             catch (Exception ex) when (!(ex is IOException))
             {
@@ -141,7 +141,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
 
             try
             {
-                await BindEndpointAsync(new IPEndPoint(IPAddress.IPv6Loopback, address.Port), context);
+                await BindEndpointAsync(new IPEndPoint(IPAddress.IPv6Loopback, address.Port), context).ConfigureAwait(false);
             }
             catch (Exception ex) when (!(ex is IOException))
             {
@@ -180,13 +180,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             if (parsedAddress.IsUnixPipe)
             {
                 var endPoint = new ListenOptions(parsedAddress.UnixPipePath);
-                await BindEndpointAsync(endPoint, context);
+                await BindEndpointAsync(endPoint, context).ConfigureAwait(false);
                 context.Addresses.Add(endPoint.GetDisplayName());
             }
             else if (string.Equals(parsedAddress.Host, "localhost", StringComparison.OrdinalIgnoreCase))
             {
                 // "localhost" for both IPv4 and IPv6 can't be represented as an IPEndPoint.
-                await BindLocalhostAsync(parsedAddress, context);
+                await BindLocalhostAsync(parsedAddress, context).ConfigureAwait(false);
             }
             else
             {
@@ -194,7 +194,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                 if (TryCreateIPEndPoint(parsedAddress, out var endpoint))
                 {
                     options = new ListenOptions(endpoint);
-                    await BindEndpointAsync(options, context);
+                    await BindEndpointAsync(options, context).ConfigureAwait(false);
                 }
                 else
                 {
@@ -202,13 +202,13 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
                     try
                     {
                         options = new ListenOptions(new IPEndPoint(IPAddress.IPv6Any, parsedAddress.Port));
-                        await BindEndpointAsync(options, context);
+                        await BindEndpointAsync(options, context).ConfigureAwait(false);
                     }
                     catch (Exception ex) when (!(ex is IOException))
                     {
                         // for machines that do not support IPv6
                         options = new ListenOptions(new IPEndPoint(IPAddress.Any, parsedAddress.Port));
-                        await BindEndpointAsync(options, context);
+                        await BindEndpointAsync(options, context).ConfigureAwait(false);
                     }
                 }
 
@@ -227,7 +227,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 context.Logger.LogDebug($"No listening endpoints were configured. Binding to {Constants.DefaultServerAddress} by default.");
 
-                await BindLocalhostAsync(ServerAddress.FromUrl(Constants.DefaultServerAddress), context);
+                await BindLocalhostAsync(ServerAddress.FromUrl(Constants.DefaultServerAddress), context).ConfigureAwait(false);
             }
         }
 
@@ -279,7 +279,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 foreach (var endpoint in _endpoints)
                 {
-                    await BindEndpointAsync(endpoint, context);
+                    await BindEndpointAsync(endpoint, context).ConfigureAwait(false);
 
                     context.Addresses.Add(endpoint.GetDisplayName());
                 }
@@ -299,7 +299,7 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core.Internal
             {
                 foreach (var address in _addresses)
                 {
-                    await BindAddressAsync(address, context);
+                    await BindAddressAsync(address, context).ConfigureAwait(false);
                 }
             }
         }

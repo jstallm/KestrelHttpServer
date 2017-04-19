@@ -107,16 +107,16 @@ namespace Microsoft.AspNetCore.Server.Kestrel.Core
                     ServerOptions = Options
                 };
 
-                Func<ListenOptions, Task> onBind = async endpoint =>
+                async Task OnBind(ListenOptions endpoint)
                 {
                     var connectionHandler = new ConnectionHandler<TContext>(endpoint, serviceContext, application);
                     var transport = _transportFactory.Create(endpoint, connectionHandler);
                     _transports.Add(transport);
 
                     await transport.BindAsync().ConfigureAwait(false);
-                };
+                }
 
-                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, _logger, onBind).ConfigureAwait(false);
+                await AddressBinder.BindAsync(_serverAddresses, Options.ListenOptions, _logger, OnBind).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
